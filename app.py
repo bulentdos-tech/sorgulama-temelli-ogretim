@@ -22,12 +22,13 @@ model = load_model()
 # --- 3. ARAYÜZ ---
 st.title("🎓 IBL Akademik Mentor")
 
+# Model yüklenemezse hata göster
 if isinstance(model, str):
     st.error(f"⚠️ Teknik Engel: {model}")
     st.info("Eğer hata devam ederse, Google AI Studio'da anahtarınızın yanında 'Gemini API' servisinin aktif olduğunu teyit edin.")
     st.stop()
 
-# Sohbet hafızası
+# --- Sohbet hafızası ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -36,30 +37,31 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Kullanıcıdan giriş al
-if prompt := st.chat_input("Cevabınızı buraya yazın..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        try:
-            # Chat geçmişini v1 API formatına dönüştür
-            history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]]
-            # Mesajı gönder ve cevap al
-            response = model.send_message(prompt, conversation=history)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as e:
-            st.error(f"API Hatası: {e}")
-
-# İlk mesaj: Eğitim başlat
+# --- İlk mesaj (eğitimi başlat) ---
 if not st.session_state.messages:
     try:
         response = model.send_message(
             "Sen Sorgulama Temelli Öğretim (IBL) uzmanı bir akademisyensin. Üniversite hocalarına bu yöntemi öğretiyorsun. Kural: Asla doğrudan bilgi verme, hep soru sorarak ilerlet. Eğitime 'Sorgulama temelli öğretim nedir?' diyerek başla."
         )
         st.session_state.messages.append({"role": "assistant", "content": response.text})
-        st.experimental_rerun()
+        with st.chat_message("assistant"):
+            st.markdown(response.text)
     except Exception as e:
         st.error(f"Başlangıç mesajı alınamadı: {e}")
+
+# --- Kullanıcıdan mesaj al ---
+if prompt := st.chat_input("Cevabınızı buraya yazın..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # --- Modelden cevap al ---
+    with st.chat_message("assistant"):
+        try:
+            # Chat geçmişini v1 API formatına dönüştür
+            history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]]
+            response = model.send_message(prompt, conversation=history)
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"API Hatası: {e}")
