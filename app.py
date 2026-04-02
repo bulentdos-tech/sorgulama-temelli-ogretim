@@ -47,3 +47,11 @@ if question:
                     st.write(f"**Yansıtma:** {reflection}")
 else:
     st.warning("Devam etmek için lütfen bir soru yazarak başlayın.")
+GitHub ve Streamlit İçin Son Kontrol Listesi:
+requirements.txt: İçinde sadece streamlit ve pandas==2.1.0 olduğundan emin ol. (Dosya uzantısının .txt olduğundan ve küçük harfle yazıldığından emin ol).
+
+Dosya İsimleri: GitHub'daki ana dosyanın adının tam olarak app.py olduğundan emin ol.
+
+Streamlit Cloud: share.streamlit.io adresine gidip sorgulama-temelli-ogretim deponu bağladığında sağdaki "Logs" kısmını izle. Eğer kırmızı bir yazı çıkarsa oradaki hatayı kopyalayıp bana gönder.
+
+Her şey yolunda giderse, birkaç dakika içinde "Your app is live" yazısını göreceksin! Uygulaman hazır olduğunda linkini denemek için sabırsızlanıyorum. Başka bir adımda takıldın mı?
