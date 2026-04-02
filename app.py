@@ -1,57 +1,50 @@
 import streamlit as st
+import google.generativeai as genai
 
-# Sayfa Yapılandırması
-st.set_page_config(page_title="IBL Tasarım Sistemi", page_icon="🎓")
+# Sayfa Ayarları
+st.set_page_config(page_title="IBL Akademik Mentor", layout="centered")
+st.title("🎓 Sorgulama Temelli Öğretim Mentoru")
 
-st.title("🚀 Sorgulama Temelli Öğretim Tasarım Sistemi")
-st.info("Sorgulama temelli öğrenme (Inquiry-Based Learning) adımlarını takip ederek tasarımını oluştur.")
+# API Anahtarı Girişi (Güvenli Alan)
+with st.sidebar:
+    api_key = st.text_input("Gemini API Key Giriniz:", type="password")
+    st.info("API anahtarını Google AI Studio'dan alabilirsiniz.")
 
-# --- 1. ADIM: PROBLEM / SORU ---
-st.header("1. Problem / Soru")
-question = st.text_input(
-    "Mini senaryonu yaz:", 
-    placeholder="Örn: Öğretmenler kaliteli etkinlik tasarlarken neye dikkat ediyor?"
-)
+# SİZİN PROMPTUNUZ (SİSTEM TALİMATI)
+SYSTEM_PROMPT = """
+Sen hem ileri düzey bir prompt mühendisi hem de sorgulama temelli öğretim (Inquiry-Based Learning) alanında uzman bir akademisyensin...
+(BURAYA YUKARIDAKİ TÜM PROMPT METNİNİZİ YAPIŞTIRIN)
+"""
 
-if question:
-    st.success(f"**Odak Sorun:** {question}")
-    
-    # --- 2. ADIM: HİPOTEZ ---
-    st.divider()
-    st.header("2. Hipotez Oluştur")
-    hypothesis = st.text_area("Bu soruya ilişkin hipotezini yaz:", placeholder="Tahminimce...")
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=SYSTEM_PROMPT
+    )
 
-    if hypothesis:
-        # --- 3. ADIM: VERİ TOPLAMA ---
-        st.divider()
-        st.header("3. Veri Toplama ve Analiz")
-        data_input = st.text_area("Varsa veri veya gözlemlerini ekle:", placeholder="Gözlemlerim şunlar...")
-        
-        if data_input:
-            st.info("💡 **Analiz Önerisi:** Yazdığın gözlemler, hipotezini destekliyor mu? Çelişen noktaları belirle.")
+    # Chat Geçmişi Başlatma
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-            # --- 4. ADIM: YANSITMA ---
-            st.divider()
-            st.header("4. Yansıtma ve Değerlendirme")
-            reflection = st.text_area("Süreci ve sonucu değerlendir:", placeholder="Bu süreçten ne öğrendin?")
-            
-            if reflection:
-                st.balloons()
-                st.success("✅ Tasarım sürecin tamamlandı ve yansıtman kaydedildi!")
-                
-                # Özet Gösterimi
-                with st.expander("Tasarım Özeti"):
-                    st.write(f"**Soru:** {question}")
-                    st.write(f"**Hipotez:** {hypothesis}")
-                    st.write(f"**Veriler:** {data_input}")
-                    st.write(f"**Yansıtma:** {reflection}")
+    # Mesajları Ekranda Göster
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # Kullanıcı Girdisi
+    if prompt := st.chat_input("Cevabınızı buraya yazın..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # AI Yanıtı
+        with st.chat_message("assistant"):
+            chat = model.start_chat(history=[
+                {"role": m["role"], "parts": [m["content"]]} for m in st.session_state.messages[:-1]
+            ])
+            response = chat.send_message(prompt)
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
 else:
-    st.warning("Devam etmek için lütfen bir soru yazarak başlayın.")
-GitHub ve Streamlit İçin Son Kontrol Listesi:
-requirements.txt: İçinde sadece streamlit ve pandas==2.1.0 olduğundan emin ol. (Dosya uzantısının .txt olduğundan ve küçük harfle yazıldığından emin ol).
-
-Dosya İsimleri: GitHub'daki ana dosyanın adının tam olarak app.py olduğundan emin ol.
-
-Streamlit Cloud: share.streamlit.io adresine gidip sorgulama-temelli-ogretim deponu bağladığında sağdaki "Logs" kısmını izle. Eğer kırmızı bir yazı çıkarsa oradaki hatayı kopyalayıp bana gönder.
-
-Her şey yolunda giderse, birkaç dakika içinde "Your app is live" yazısını göreceksin! Uygulaman hazır olduğunda linkini denemek için sabırsızlanıyorum. Başka bir adımda takıldın mı?
+    st.warning("Lütfen başlamak için yan menüye API anahtarınızı girin.")
