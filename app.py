@@ -57,18 +57,30 @@ ASLA tek yönlü anlatım yapma. HER ZAMAN: sor, bekle, analiz et, düzelt ve so
 Şimdi öğretime başla.
 """
 
-# Bazı kütüphane versiyonlarında 'models/' ön eki şarttır
-try:
-    model = genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash", 
-        system_instruction=SYSTEM_PROMPT
-    )
-except:
-    # Eğer üstteki de hata verirse alternatif isimlendirmeyi dene
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash-latest",
-        system_instruction=SYSTEM_PROMPT
-    )
+# --- MODEL YAPILANDIRMASI (HATA TOLERANSLI) ---
+def get_model():
+    # Denenecek model isimleri (Google bazen birini, bazen diğerini kabul eder)
+    model_variants = ["gemini-1.5-flash", "models/gemini-1.5-flash", "gemini-1.5-flash-latest"]
+    
+    for m_name in model_variants:
+        try:
+            temp_model = genai.GenerativeModel(
+                model_name=m_name,
+                system_instruction=SYSTEM_PROMPT
+            )
+            # Küçük bir test mesajı göndererek modelin varlığını teyit et
+            temp_model.generate_content("test", generation_config={"max_output_tokens": 1})
+            return temp_model
+        except Exception:
+            continue
+    return None
+
+model = get_model()
+
+if model is None:
+    st.error("Model yüklenemedi. Lütfen API anahtarınızın 'Gemini 1.5 Flash' modeline erişimi olduğundan emin olun.")
+    st.stop()
+# --- MODEL YAPILANDIRMASI SONU ---
 
 # 3. SOHBET GEÇMİŞİ YÖNETİMİ
 if "messages" not in st.session_state:
