@@ -57,11 +57,18 @@ ASLA tek yönlü anlatım yapma. HER ZAMAN: sor, bekle, analiz et, düzelt ve so
 Şimdi öğretime başla.
 """
 
-# Model Yapılandırması (NotFound hatasını engellemek için tam isim)
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction=SYSTEM_PROMPT
-)
+# Bazı kütüphane versiyonlarında 'models/' ön eki şarttır
+try:
+    model = genai.GenerativeModel(
+        model_name="models/gemini-1.5-flash", 
+        system_instruction=SYSTEM_PROMPT
+    )
+except:
+    # Eğer üstteki de hata verirse alternatif isimlendirmeyi dene
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash-latest",
+        system_instruction=SYSTEM_PROMPT
+    )
 
 # 3. SOHBET GEÇMİŞİ YÖNETİMİ
 if "messages" not in st.session_state:
