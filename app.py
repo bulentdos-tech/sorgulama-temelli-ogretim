@@ -3,44 +3,72 @@ import google.generativeai as genai
 
 # --- 1. AYARLAR ---
 st.set_page_config(page_title="IBL Mentor", page_icon="🎓")
-API_KEY = "AIzaSyBP859Oq1Io1Tcrlb1NyN3_KlQonjkW5hw" # Sizin verdiğiniz anahtar
+API_KEY = "AIzaSyBP859Oq1Io1Tcrlb1NyN3_KlQonjkW5hw"
 
-try:
-    genai.configure(api_key=API_KEY)
-except Exception as e:
-    st.error(f"Yapılandırma Hatası: {e}")
-
-# --- 2. MODELİ ZORLA BAŞLATMA ---
+# --- 2. MODELİ ZORLAYARAK BAŞLATMA ---
 @st.cache_resource
-def force_load_model():
-    # Google'ın kabul ettiği tüm varyasyonlar
-    models_to_try = [
-        "gemini-1.5-flash",
-        "models/gemini-1.5-flash",
-        "gemini-1.5-flash-001",
-        "gemini-pro"
+def load_robust_model():
+    genai.configure(api_key=API_KEY)
+    # 2026'da en stabil çalışan model isimleri
+    model_names = [
+        "gemini-1.5-flash", 
+        "models/gemini-1.5-flash", 
+        "gemini-1.5-flash-latest"
     ]
     
     errors = []
-    for m_name in models_to_try:
+    for m in model_names:
         try:
             model = genai.GenerativeModel(
-                model_name=m_name,
-                system_instruction="Sen bir IBL uzmanısın. Eğitimi 'Sorgulama temelli öğretim nedir?' sorusuyla başlat."
+                model_name=m,
+                system_instruction="Sen Sorgulama Temelli Öğretim (IBL) uzmanı bir akademisyensin. Üniversite hocalarına bu yöntemi öğretiyorsun. Kural: Asla doğrudan bilgi verme, hep soru sorarak ilerlet. Eğitime 'Sorgulama temelli öğretim nedir?' diyerek başla."
             )
-            # Test amaçlı küçük bir veri üretimi
+            # Test çağrısı (Çalışıp çalışmadığını kontrol et)
             model.generate_content("test", generation_config={"max_output_tokens": 1})
             return model
         except Exception as e:
-            errors.append(f"{m_name}: {str(e)}")
+            errors.append(f"{m}: {str(e)}")
             continue
     return errors
 
-result = force_load_model()
+model_result = load_robust_model()
 
-if isinstance(result, list):
-    st.error("❌ Hiçbir model varyasyonu başlatılamadı.")
-    with st.expander("Teknik Hata Detaylarını Gör"):
-        for err in result:
+# --- 3. ARAYÜZ VE HATA YÖNETİMİ ---
+st.title("🎓 IBL Akademik Mentor")
+
+if isinstance(model_result, list):
+    st.error("❌ Model Başlatılamadı.")
+    with st.expander("Teknik Hata Detaylarını İncele"):
+        for err in model_result:
             st.write(err)
+    st.info("İpucu: Eğer 'API_KEY_INVALID' hatası alıyorsanız, Google AI Studio'da yepyeni bir 'Project' oluşturup yeni anahtar almanız gerekir.")
     st.stop()
+
+# --- 4. SOHBET DÖNGÜSÜ ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("Cevabınızı buraya yazın..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        history = [{"role": "model" if m["role"] == "assistant" else "user", "parts": [m["content"]]} for m in st.session_state.messages[:-1]]
+        chat = model_result.start_chat(history=history)
+        response = chat.send_message(prompt)
+        st.markdown(response.text)
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+
+# İlk mesaj tetikleyici
+if not st.session_state.messages:
+    try:
+        res = model_result.generate_content("Eğitimi başlat.")
+        st.session_state.messages.append({"role": "assistant", "content": res.text})
+        st.rerun()
+    except:
+        pass
