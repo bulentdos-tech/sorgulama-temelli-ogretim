@@ -6,7 +6,7 @@ st.set_page_config(page_title="IBL Mentor", page_icon="🎓")
 st.title("🎓 Sorgulama Temelli Öğretim Mentoru")
 
 # Sizin verdiğiniz API Key
-API_KEY = "AIzaSyCCiRL_OYOUdmnmTf38v0newT0VmIJqFsI"
+API_KEY = "AIzaSyBP859Oq1Io1Tcrlb1NyN3_KlQonjkW5hw"
 
 # 2. MODEL YAPILANDIRMASI
 try:
