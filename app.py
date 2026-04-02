@@ -5,7 +5,7 @@ import google.generativeai as genai
 st.set_page_config(page_title="IBL Mentor", page_icon="🎓")
 
 # YENİ ANAHTARI BURAYA YAPIŞTIRIN
-API_KEY = "AIzaSyCCiRL_OYOUdmnmTf38v0newT0VmIJqFsI"
+API_KEY = "AIzaSyDn9FccFtmjwWBtcHBz4SGnFa1h2a5PTwo"
 
 genai.configure(api_key=API_KEY)
 
