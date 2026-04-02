@@ -15,7 +15,7 @@ st.title("🎓 Sorgulama Temelli Öğretim Mentoru")
 st.caption("Akademisyenler için Bilimsel Araştırma ve Sorgulama Temelli Öğretim Rehberi")
 
 # 2. YAPILANDIRMA (Sizin API Anahtarınız ve Model Ayarları)
-API_KEY = "AIzaSyDn9FccFtmjwWBtcHBz4SGnFa1h2a5PTwo"
+API_KEY = "AAIzaSyCCiRL_OYOUdmnmTf38v0newT0VmIJqFsI"
 genai.configure(api_key=API_KEY)
 
 # SİZİN ÖZEL PROMPT MİMARİNİZ
