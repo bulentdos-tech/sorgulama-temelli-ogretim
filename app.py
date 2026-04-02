@@ -1,50 +1,39 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 # --- 1. AYARLAR ---
 st.set_page_config(page_title="IBL Mentor", page_icon="🎓")
-API_KEY = "AIzaSyBP859Oq1Io1Tcrlb1NyN3_KlQonjkW5hw"
 
-genai.configure(api_key=API_KEY)
+# API key Streamlit Secrets üzerinden alınıyor
+API_KEY = st.secrets["API_KEY"]
+client = genai.Client(api_key=API_KEY)
 
-# --- 2. MODEL YÜKLEME ---
-@st.cache_resource
-def load_model():
-    try:
-        # Güncel model ismi (Gemini v2.5 Flash)
-        chat = genai.ChatModel(model="gemini-2.5-flash")
-        return chat
-    except Exception as e:
-        return str(e)
-
-model = load_model()
-
-# --- 3. ARAYÜZ ---
+# --- 2. ARAYÜZ ---
 st.title("🎓 IBL Akademik Mentor")
 
-if isinstance(model, str):
-    st.error(f"⚠️ Teknik Engel: {model}")
-    st.info("Google AI Studio'da anahtarınızın yanında 'Gemini API' servisinin aktif olduğunu teyit edin.")
-    st.stop()
-
-# Sohbet hafızası
+# Mesaj geçmişi
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Önceki mesajları göster
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# İlk mesaj (eğitimi başlat)
+# İlk mesaj: sistem prompt
 if not st.session_state.messages:
+    system_prompt = """Sen Sorgulama Temelli Öğretim (IBL) uzmanı bir akademisyensin.
+Üniversite hocalarına bu yöntemi öğretiyorsun. Asla direkt bilgi verme, hep soru sorarak ilerlet.
+Eğitime 'Sorgulama temelli öğretim nedir?' diyerek başla."""
     try:
-        response = model.send_message(
-            "Sen Sorgulama Temelli Öğretim (IBL) uzmanı bir akademisyensin. Üniversite hocalarına bu yöntemi öğretiyorsun. Kural: Asla doğrudan bilgi verme, hep soru sorarak ilerlet. Eğitime 'Sorgulama temelli öğretim nedir?' diyerek başla."
+        res = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=system_prompt
         )
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
+        first = res.text
+        st.session_state.messages.append({"role": "assistant", "content": first})
         with st.chat_message("assistant"):
-            st.markdown(response.text)
+            st.markdown(first)
     except Exception as e:
         st.error(f"Başlangıç mesajı alınamadı: {e}")
 
@@ -54,11 +43,16 @@ if prompt := st.chat_input("Cevabınızı buraya yazın..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    with st.chat_message("assistant"):
-        try:
-            history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]]
-            response = model.send_message(prompt, conversation=history)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as e:
-            st.error(f"API Hatası: {e}")
+    # API’ye geçmiş ve yeni soruyu gönder
+    history_text = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+    try:
+        answer = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=history_text
+        )
+        text = answer.text
+        with st.chat_message("assistant"):
+            st.markdown(text)
+        st.session_state.messages.append({"role": "assistant", "content": text})
+    except Exception as e:
+        st.error(f"API Hatası: {e}")
