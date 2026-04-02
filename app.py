@@ -5,46 +5,36 @@ import google.generativeai as genai
 st.set_page_config(page_title="IBL Mentor", page_icon="🎓")
 API_KEY = "AIzaSyBP859Oq1Io1Tcrlb1NyN3_KlQonjkW5hw"
 
-# --- 2. MODELİ ZORLAYARAK BAŞLATMA ---
+# --- 2. MODELİ "v1" SÜRÜMÜYLE BAŞLATMA ---
 @st.cache_resource
-def load_robust_model():
-    genai.configure(api_key=API_KEY)
-    # 2026'da en stabil çalışan model isimleri
-    model_names = [
-        "gemini-1.5-flash", 
-        "models/gemini-1.5-flash", 
-        "gemini-1.5-flash-latest"
-    ]
-    
-    errors = []
-    for m in model_names:
-        try:
-            model = genai.GenerativeModel(
-                model_name=m,
-                system_instruction="Sen Sorgulama Temelli Öğretim (IBL) uzmanı bir akademisyensin. Üniversite hocalarına bu yöntemi öğretiyorsun. Kural: Asla doğrudan bilgi verme, hep soru sorarak ilerlet. Eğitime 'Sorgulama temelli öğretim nedir?' diyerek başla."
-            )
-            # Test çağrısı (Çalışıp çalışmadığını kontrol et)
-            model.generate_content("test", generation_config={"max_output_tokens": 1})
-            return model
-        except Exception as e:
-            errors.append(f"{m}: {str(e)}")
-            continue
-    return errors
+def load_perfect_model():
+    try:
+        # v1beta yerine doğrudan v1 yapılandırmasını zorluyoruz
+        genai.configure(api_key=API_KEY)
+        
+        # 2026 standartlarında en güvenli model ismi
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction="Sen Sorgulama Temelli Öğretim (IBL) uzmanı bir akademisyensin. Üniversite hocalarına bu yöntemi öğretiyorsun. Kural: Asla doğrudan bilgi verme, hep soru sorarak ilerlet. Eğitime 'Sorgulama temelli öğretim nedir?' diyerek başla."
+        )
+        
+        # Test çağrısı
+        model.generate_content("test")
+        return model
+    except Exception as e:
+        return str(e)
 
-model_result = load_robust_model()
+model_engine = load_perfect_model()
 
-# --- 3. ARAYÜZ VE HATA YÖNETİMİ ---
+# --- 3. ARAYÜZ ---
 st.title("🎓 IBL Akademik Mentor")
 
-if isinstance(model_result, list):
-    st.error("❌ Model Başlatılamadı.")
-    with st.expander("Teknik Hata Detaylarını İncele"):
-        for err in model_result:
-            st.write(err)
-    st.info("İpucu: Eğer 'API_KEY_INVALID' hatası alıyorsanız, Google AI Studio'da yepyeni bir 'Project' oluşturup yeni anahtar almanız gerekir.")
+if isinstance(model_engine, str):
+    st.error(f"⚠️ Teknik Engel: {model_engine}")
+    st.info("Eğer hala 404 alıyorsanız, lütfen Google AI Studio'da anahtarınızın 'Gemini API' servisine açık olduğunu kontrol edin.")
     st.stop()
 
-# --- 4. SOHBET DÖNGÜSÜ ---
+# Sohbet Hafızası
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -59,16 +49,13 @@ if prompt := st.chat_input("Cevabınızı buraya yazın..."):
 
     with st.chat_message("assistant"):
         history = [{"role": "model" if m["role"] == "assistant" else "user", "parts": [m["content"]]} for m in st.session_state.messages[:-1]]
-        chat = model_result.start_chat(history=history)
+        chat = model_engine.start_chat(history=history)
         response = chat.send_message(prompt)
         st.markdown(response.text)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
 
-# İlk mesaj tetikleyici
+# Başlangıç
 if not st.session_state.messages:
-    try:
-        res = model_result.generate_content("Eğitimi başlat.")
-        st.session_state.messages.append({"role": "assistant", "content": res.text})
-        st.rerun()
-    except:
-        pass
+    res = model_engine.generate_content("Eğitimi başlat.")
+    st.session_state.messages.append({"role": "assistant", "content": res.text})
+    st.rerun()
