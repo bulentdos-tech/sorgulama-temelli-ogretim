@@ -1,88 +1,71 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. SAYFA AYARLARI VE TASARIM
-st.set_page_config(page_title="IBL Akademik Mentor", page_icon="🎓", layout="centered")
+# --- 1. SAYFA YAPILANDIRMASI ---
+st.set_page_config(page_title="IBL Mentor", page_icon="🎓", layout="centered")
 
+# Görsel iyileştirme (Opsiyonel)
 st.markdown("""
     <style>
-    .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
+    .stChatMessage { border-radius: 15px; }
     .stChatInput { border-radius: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎓 Sorgulama Temelli Öğretim Mentoru")
-st.caption("Akademisyenler için Bilimsel Araştırma ve Sorgulama Temelli Öğretim Rehberi")
-
-# 2. YAPILANDIRMA (Sizin API Anahtarınız ve Model Ayarları)
-API_KEY = "AAIzaSyCCiRL_OYOUdmnmTf38v0newT0VmIJqFsI"
+# --- 2. API VE MODEL AYARLARI ---
+# Son aldığınız API Key
+API_KEY = "AIzaSyCCiRL_OYOUdmnmTf38v0newT0VmIJqFsI"
 genai.configure(api_key=API_KEY)
 
-# SİZİN ÖZEL PROMPT MİMARİNİZ
+# Sizin mimari promptunuz (Sistem Talimatı)
 SYSTEM_PROMPT = """
 Sen hem ileri düzey bir prompt mühendisi hem de sorgulama temelli öğretim (Inquiry-Based Learning) alanında uzman bir akademisyensin. Aynı zamanda bilimsel araştırma yöntemleri konusunda uzmansın.
- 
 Görevin: Üniversitedeki öğretim üyelerine sorgulama temelli öğretimi derinlemesine öğretmek ve bunu bilimsel araştırma süreçleriyle entegre ederek uygulamalı şekilde kazandırmaktır.
- 
-AMAÇ:
-- Ezber değil → düşünme öğretmek
-- Pasif öğrenme değil → aktif katılım sağlamak
-- Bilgi vermek değil → sorgulama becerisi kazandırmak
- 
+
 # 🔴 GENEL KURALLAR
-- Öğrenci (öğretim üyesi) pasif kalamaz
-- Her aşamada soru sor ve cevap bekle
-- Cevaplara göre öğretimi adapte et
-- Eksikleri düzeltmeden ilerleme
-- Günlük hayat + akademik teori birlikte ver
-- Basitten karmaşığa ilerle
-- Gerekirse zorlaştır / sadeleştir
- 
-# 🧠 ÖĞRETİM MİMARİSİ (TÜM TEKNİKLER ENTEGRE)
-## 1️⃣ STEP-BACK (BÜYÜK RESİM): Sorgulama temelli öğretim nedir? Neden gereklidir? Cevap bekle.
-## 2️⃣ DECOMPOSITION (YAPI TAŞLARI): Soru sorma, hipotez, veri analizi vb. süreç neden bu sırayla işler? Sor.
-## 3️⃣ CHAIN OF THOUGHT: Kendi dersi için mini bir sorgulama senaryosu yazdır.
-## 4️⃣ TREE OF THOUGHTS: Senaryoyu analiz et ve alternatifler üret.
-## 5️⃣ PROMPT CHAINING: Konu belirle -> Soru üret -> Etkinlik tasarla (Adım adım ve düzeltmeli).
-## 6️⃣ LİTERATÜR ENTEGRASYONU: Yapılandırmacılık ve teorileri dersine nasıl uygular? Sor.
-## 7️⃣ SELF-CRITIQUE: Zayıf yönleri bul ve geliştir.
-## 8️⃣ EXPERTS: Eğitim bilimci, öğretmen ve öğrenci gözüyle değerlendir.
-## 9️⃣ SELF-CONSISTENCY: Hedef-etkinlik-ölçme uyumunu kontrol et.
-## 🔟 REVERSE ENGINEERING: Başarılı bir örneği analiz ettir.
-## 1️⃣1️⃣ META-PROMPTING: Bu sistemi öğretmek için öğrenciye prompt yazdır.
-## 12 ADAPTİF GELİŞİM: Performansa göre zorluğu ayarla.
- 
-# 🔥 ALTIN KURAL
-ASLA tek yönlü anlatım yapma. HER ZAMAN: sor, bekle, analiz et, düzelt ve sonra ilerle.
-Şimdi öğretime başla.
+- Öğrenci (öğretim üyesi) pasif kalamaz. Her aşamada soru sor ve cevap bekle.
+- Cevaplara göre öğretimi adapte et. Eksikleri düzeltmeden ilerleme.
+- Günlük hayat + akademik teori birlikte ver. Basitten karmaşığa ilerle.
+- ASLA tek yönlü anlatım yapma. Sor, bekle, analiz et, düzelt ve ilerle.
+
+# 🧠 ÖĞRETİM MİMARİSİ
+1. STEP-BACK: Sorgulama temelli öğretim nedir? Neden gereklidir? (Sor ve bekle)
+2. DECOMPOSITION: Bileşenleri (hipotez, veri vb.) analiz ettir.
+3. CHAIN OF THOUGHT: Senaryo yazdır.
+4. TREE OF THOUGHTS: Alternatif yaklaşımlar üret.
+5. PROMPT CHAINING: Ders tasarımı (Adım adım).
+6. LİTERATÜR: Teori-uygulama bağı.
+7. SELF-CRITIQUE: Analiz ve geliştirme.
+... (Diğer adımları da bu mantıkla uygula)
+
+Şimdi öğretime en baştan (STEP-BACK) başla.
 """
 
-# --- MODEL YAPILANDIRMASI (HATA TOLERANSLI) ---
-def get_model():
-    # Denenecek model isimleri (Google bazen birini, bazen diğerini kabul eder)
-    model_variants = ["gemini-1.5-flash", "models/gemini-1.5-flash", "gemini-1.5-flash-latest"]
-    
-    for m_name in model_variants:
+# Hata Toleranslı Model Yükleyici
+@st.cache_resource
+def load_ibl_model():
+    # Google'ın kabul edebileceği güncel model isimleri
+    variants = ["gemini-1.5-flash-002", "gemini-1.5-flash", "models/gemini-1.5-flash"]
+    for name in variants:
         try:
-            temp_model = genai.GenerativeModel(
-                model_name=m_name,
-                system_instruction=SYSTEM_PROMPT
-            )
-            # Küçük bir test mesajı göndererek modelin varlığını teyit et
-            temp_model.generate_content("test", generation_config={"max_output_tokens": 1})
-            return temp_model
+            m = genai.GenerativeModel(model_name=name, system_instruction=SYSTEM_PROMPT)
+            # Test çağrısı (Modelin yaşadığını teyit et)
+            m.generate_content("hi", generation_config={"max_output_tokens": 1})
+            return m
         except Exception:
             continue
     return None
 
-model = get_model()
+model = load_ibl_model()
+
+# --- 3. SOHBET ARAYÜZÜ ---
+st.title("🎓 IBL Akademik Mentor")
+st.info("Sorgulama Temelli Öğretim ve Bilimsel Araştırma Yöntemleri Eğitimi")
 
 if model is None:
-    st.error("Model yüklenemedi. Lütfen API anahtarınızın 'Gemini 1.5 Flash' modeline erişimi olduğundan emin olun.")
+    st.error("❌ Model başlatılamadı. Lütfen API anahtarınızı veya internet bağlantınızı kontrol edin.")
     st.stop()
-# --- MODEL YAPILANDIRMASI SONU ---
 
-# 3. SOHBET GEÇMİŞİ YÖNETİMİ
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -91,45 +74,44 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. ETKİLEŞİM DÖNGÜSÜ
+# --- 4. ETKİLEŞİM MANTIĞI ---
 if prompt := st.chat_input("Cevabınızı buraya yazın..."):
-    # Kullanıcı mesajını kaydet ve göster
+    # Kullanıcı mesajını ekle
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # AI Yanıtı Oluşturma
+    # AI Yanıtı
     with st.chat_message("assistant"):
-        # Geçmişi Gemini formatına (user/model) dönüştür
+        # Geçmişi dönüştür
         history = []
         for m in st.session_state.messages[:-1]:
-            # Gemini 'assistant' yerine 'model' rolünü bekler
             role = "model" if m["role"] == "assistant" else "user"
             history.append({"role": role, "parts": [m["content"]]})
         
         try:
-            # Sohbeti başlat ve yanıt al
             chat = model.start_chat(history=history)
+            # Akışlı yanıt (streaming) için:
             response = chat.send_message(prompt, stream=True)
-            
-            full_response = ""
+            full_res = ""
             placeholder = st.empty()
             for chunk in response:
-                full_response += chunk.text
-                placeholder.markdown(full_response + "▌")
-            placeholder.markdown(full_response)
+                full_res += chunk.text
+                placeholder.markdown(full_res + "▌")
+            placeholder.markdown(full_res)
             
-            # Yanıtı geçmişe ekle
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            
+            st.session_state.messages.append({"role": "assistant", "content": full_res})
         except Exception as e:
-            st.error(f"Bir teknik hata oluştu: {str(e)}")
-            st.info("İpucu: API anahtarınızın kısıtlamalarını veya internet bağlantınızı kontrol edin.")
+            st.error(f"Bir hata oluştu: {str(e)}")
 
-# İlk açılışta AI'nın başlaması için (Eğer geçmiş boşsa)
-if len(st.session_state.messages) == 0:
+# --- 5. İLK AÇILIŞ TETİKLEYİCİSİ ---
+if not st.session_state.messages:
     with st.chat_message("assistant"):
-        initial_chat = model.start_chat(history=[])
-        response = initial_chat.send_message("Merhaba, öğretime başlayalım.")
-        st.markdown(response.text)
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
+        try:
+            initial_chat = model.start_chat(history=[])
+            # Promptun içindeki talimata göre başlaması için boş bir tetikleyici
+            res = initial_chat.send_message("Eğitimi başlat.")
+            st.markdown(res.text)
+            st.session_state.messages.append({"role": "assistant", "content": res.text})
+        except Exception as e:
+            st.error(f"Başlatma hatası: {e}")
